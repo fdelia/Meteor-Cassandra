@@ -49,13 +49,27 @@ if (Meteor.isServer) {
     },
     'getNumber': function() {
       var query = 'SELECT * FROM counters WHERE connection_id=?';
+      var params = [this.connection.id];
 
-      client.execute(query, [this.connection.id], function(error, result) {
-        if (error) {
-          throw new Meteor.Error('query-error', error);
-        }
-        console.log(result.rows);
-      });
+      // client.execute(query, params, function(error, result) {
+      //   if (error) {
+      //     throw new Meteor.Error('query-error', error);
+      //   }
+      //   console.log(result.rows);
+      // });
+
+      // make async look sync
+      var clientSync = Meteor.wrapAsync(client.execute, client);
+      // try {
+
+      var res = clientSync(query, params);
+
+      console.log(res.rows);
+      // } catch (error) {
+      //   console.log(error);
+      // throwing error doesnt work yet
+      //   throw new Meteor.Error('query-error', error);
+      // }
     }
   });
 }
