@@ -1,0 +1,7 @@
+meteor add meteorhacks:npm
+
+in packages.json add:
+		"cassandra-driver": "2.2.0"  
+
+start meteor to install npm and its packages
+

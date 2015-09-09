@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "cassandra-driver": {
+      "version": "2.2.0",
+      "dependencies": {
+        "async": {
+          "version": "0.9.2"
+        },
+        "long": {
+          "version": "2.2.5"
+        }
+      }
+    }
+  }
+}
