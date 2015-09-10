@@ -12,13 +12,14 @@ if (Meteor.isClient) {
     'click button#increment': function() {
       // increment the counter in the db
       Meteor.call('increment', function(error, result) {
-
+        if (error)
+          console.error(error);
       });
     },
     'click button#get': function() {
       Meteor.call('getNumber', function(error, result) {
-        if (err)
-          console.error(err);
+        if (error)
+          console.error(error);
         else
           Session.set('counter', result);
       });
@@ -30,46 +31,67 @@ if (Meteor.isServer) {
   var client;
 
   Meteor.startup(function() {
-    // code to run on server at startup
-
     var cassandra = Meteor.npmRequire('cassandra-driver');
-    // add your addresses here
+
     client = new cassandra.Client({
+      // add your nodes here
       contactPoints: ['127.0.0.1'],
+      //
       keyspace: 'ks1'
     });
-
-
   });
 
-  Meteor.methods({
-    'increment': function() {
-      console.log(this.connection);
 
-    },
-    'getNumber': function() {
-      var query = 'SELECT * FROM counters WHERE connection_id=?';
-      var params = [this.connection.id];
+  function getRow(connectionId) {
+    var query = "SELECT * FROM counters WHERE connection_id=?";
+    var params = [connectionId];
 
-      // client.execute(query, params, function(error, result) {
-      //   if (error) {
-      //     throw new Meteor.Error('query-error', error);
-      //   }
-      //   console.log(result.rows);
-      // });
-
-      // make async look sync
-      var clientSync = Meteor.wrapAsync(client.execute, client);
-      // try {
+    // make async look sync
+    var clientSync = Meteor.wrapAsync(client.execute, client);
+    try {
 
       var res = clientSync(query, params);
 
-      console.log(res.rows);
-      // } catch (error) {
-      //   console.log(error);
-      // throwing error doesnt work yet
-      //   throw new Meteor.Error('query-error', error);
-      // }
+      if (res.rows.length > 0) return res.rows[0];
+      else return undefined;
+
+    } catch (error) {
+      console.log(error);
+      // not sure how to get the message in error
+      throw new Meteor.Error('select-query', error);
+    }
+  }
+
+  Meteor.methods({
+    'increment': function() {
+      if (!this.connection.id) throw new Meteor.Error('no-connection-id', 'strange');
+      var row = getRow(this.connection.id);
+
+      // create or update
+      if (!row) {
+        var query = "INSERT INTO counters (connection_id, clicks) VALUES (?,?)";
+        var params = [this.connection.id, 1];
+      } else {
+        var query = "UPDATE counters SET clicks=? WHERE connection_id=?";
+        var params = [row['clicks'] + 1, this.connection.id];
+      }
+
+      var clientSync = Meteor.wrapAsync(client.execute, client);
+      try {
+        // prepare: true is bc the db reads javascript-numbers as double, not int
+        return clientSync(query, params, {
+          prepare: true
+        });
+
+      } catch (error) {
+        console.log(error);
+        throw new Meteor.Error('update-query', error);
+      }
+    },
+
+    'getNumber': function() {
+      var row = getRow(this.connection.id);
+      return row && row['clicks'];
     }
   });
 }
