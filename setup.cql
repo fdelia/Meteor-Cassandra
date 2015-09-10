@@ -2,8 +2,3 @@ create keyspace ks1 with replication = {'class':'SimpleStrategy', 'replication_f
 use ks1;
 
 CREATE TABLE counters (connection_id VARCHAR PRIMARY KEY, clicks INT);
-create index connection_id on counters (connection_id);
-
-
-
-
